@@ -136,26 +136,50 @@ cards.forEach((card) => {
   const seek = card.querySelector('.seek');
   const current = card.querySelector('.current-time');
   const duration = card.querySelector('.duration');
+  const playLabel = button.getAttribute('aria-label');
+  let pendingSeek = null;
+
+  function syncMetadata() {
+    if (!Number.isFinite(audio.duration) || audio.duration <= 0) return;
+    duration.textContent = formatTime(audio.duration);
+    if (pendingSeek !== null) {
+      audio.currentTime = (pendingSeek / 100) * audio.duration;
+      current.textContent = formatTime(audio.currentTime);
+      pendingSeek = null;
+    }
+  }
 
   card.addEventListener('click', (event) => {
     if (!event.target.closest('button, input')) selectCard(card);
   });
 
-  audio.addEventListener('loadedmetadata', () => {
-    button.disabled = false;
-    seek.disabled = false;
-    duration.textContent = formatTime(audio.duration);
-  });
+  audio.addEventListener('loadedmetadata', syncMetadata);
+  audio.addEventListener('durationchange', syncMetadata);
+  syncMetadata();
 
   audio.addEventListener('error', () => {
     button.disabled = true;
     seek.disabled = true;
     duration.textContent = '--:--';
+    audioStatus.textContent = 'Track unavailable. Please try again later.';
+    audioStatus.hidden = false;
   });
 
   audio.addEventListener('timeupdate', () => {
     current.textContent = formatTime(audio.currentTime);
     if (Number.isFinite(audio.duration) && !seek.matches(':active')) seek.value = (audio.currentTime / audio.duration) * 100;
+  });
+
+  audio.addEventListener('play', () => {
+    card.classList.add('is-playing');
+    button.querySelector('span').textContent = 'Ⅱ';
+    button.setAttribute('aria-label', playLabel.replace(/^Play /, 'Pause '));
+  });
+
+  audio.addEventListener('pause', () => {
+    card.classList.remove('is-playing');
+    button.querySelector('span').textContent = '▶';
+    button.setAttribute('aria-label', playLabel);
   });
 
   audio.addEventListener('ended', () => {
@@ -179,8 +203,6 @@ cards.forEach((card) => {
 
     if (!audio.paused) {
       audio.pause();
-      card.classList.remove('is-playing');
-      button.querySelector('span').textContent = '▶';
       return;
     }
 
@@ -202,8 +224,6 @@ cards.forEach((card) => {
       frequencyBytes = analyser ? new Uint8Array(analyser.frequencyBinCount) : null;
       kickDetector.reset();
       nextStatue();
-      card.classList.add('is-playing');
-      button.querySelector('span').textContent = 'Ⅱ';
       audioStatus.hidden = true;
     } catch (error) {
       audioStatus.textContent = 'Playback could not start.';
@@ -213,7 +233,14 @@ cards.forEach((card) => {
   });
 
   seek.addEventListener('input', () => {
-    if (Number.isFinite(audio.duration)) audio.currentTime = (Number(seek.value) / 100) * audio.duration;
+    const position = Number(seek.value);
+    if (Number.isFinite(audio.duration) && audio.duration > 0) {
+      audio.currentTime = (position / 100) * audio.duration;
+      current.textContent = formatTime(audio.currentTime);
+    } else {
+      pendingSeek = position;
+      if (audio.networkState === HTMLMediaElement.NETWORK_EMPTY) audio.load();
+    }
     kickDetector.reset();
   });
 });
