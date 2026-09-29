@@ -185,19 +185,30 @@ cards.forEach((card) => {
     }
 
     try {
-      const analyser = ensureAudioGraph(audio);
-      if (audioContext?.state === 'suspended') await audioContext.resume();
+      let analyser = null;
+      try {
+        analyser = ensureAudioGraph(audio);
+      } catch {
+        analyser = null;
+      }
+
+      const playPromise = audio.play();
+      if (audioContext?.state === 'suspended') audioContext.resume().catch(() => {});
+      await playPromise;
+
       activeAnalyser = analyser;
       activeAudio = audio;
-      frequencyDb = new Float32Array(analyser.frequencyBinCount);
-      frequencyBytes = new Uint8Array(analyser.frequencyBinCount);
+      frequencyDb = analyser ? new Float32Array(analyser.frequencyBinCount) : null;
+      frequencyBytes = analyser ? new Uint8Array(analyser.frequencyBinCount) : null;
       kickDetector.reset();
       nextStatue();
-      await audio.play();
       card.classList.add('is-playing');
       button.querySelector('span').textContent = 'Ⅱ';
-    } catch {
+      audioStatus.hidden = true;
+    } catch (error) {
       audioStatus.textContent = 'Playback could not start.';
+      audioStatus.hidden = false;
+      console.error('Audio playback failed', error);
     }
   });
 
