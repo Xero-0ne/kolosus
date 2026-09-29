@@ -1,6 +1,6 @@
 :root {
   color-scheme: dark;
-  --red: #f01935;
+  --accent: #f4f4f0;
   --white: #f4f4f0;
   --muted: rgba(244, 244, 240, 0.58);
   --line: rgba(255, 255, 255, 0.2);
@@ -29,7 +29,7 @@ button, input { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
 
 button:focus-visible, a:focus-visible, input:focus-visible {
-  outline: 2px solid var(--red);
+  outline: 2px solid var(--accent);
   outline-offset: 4px;
 }
 
@@ -48,11 +48,26 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   background-position: center;
   background-size: cover;
   transform: scale(1.035);
-  filter: grayscale(0.24) contrast(1.08) brightness(0.58);
-  transition: opacity 820ms ease, transform 6s ease;
+  transition: opacity 980ms ease;
+  will-change: opacity, transform, filter;
 }
 
-.backdrop.is-visible { opacity: 1; transform: scale(1); }
+.backdrop.is-visible { opacity: 1; }
+
+.statue-backdrop {
+  transform: translate3d(var(--motion-x, 0), var(--motion-y, 0), 0) scale(var(--impact-scale, 1.035));
+  filter: grayscale(1) contrast(1.12) brightness(var(--impact-light, 0.54));
+}
+
+.static-backdrop { transform: scale(1.025); }
+
+.monolith-backdrop {
+  filter: grayscale(0.18) sepia(0.28) saturate(0.48) contrast(0.92) brightness(0.5);
+}
+
+.ritual-backdrop {
+  filter: grayscale(0.25) sepia(0.4) saturate(0.52) contrast(0.94) brightness(0.48);
+}
 
 .veil {
   z-index: 1;
@@ -85,26 +100,6 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   display: block;
 }
 
-.red-mark {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 13px;
-}
-
-.red-mark span {
-  display: block;
-  width: 31px;
-  height: 5px;
-  border-radius: 5px;
-  background: var(--red);
-  box-shadow: 0 0 18px rgba(240, 25, 53, 0.28);
-  transform: rotate(4deg);
-}
-
-.red-mark span:nth-child(2) { width: 43px; transform: rotate(-2deg); }
-.red-mark span:nth-child(3) { width: 34px; transform: rotate(3deg); }
-
 .mode-nav {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -134,7 +129,7 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   bottom: -1px;
   left: 25%;
   height: 2px;
-  background: var(--red);
+  background: var(--accent);
   transform: scaleX(0);
   transition: transform 220ms ease;
 }
@@ -194,7 +189,7 @@ main { flex: 1; display: grid; }
   background: var(--glass-strong);
 }
 
-.track-card.is-playing { border-color: rgba(240, 25, 53, 0.72); }
+.track-card.is-playing { border-color: rgba(255, 255, 255, 0.76); }
 
 .track-line { display: flex; align-items: center; gap: 13px; }
 
@@ -240,7 +235,7 @@ main { flex: 1; display: grid; }
 }
 
 .play-button:disabled { color: rgba(0, 0, 0, 0.42); opacity: 0.48; cursor: not-allowed; }
-.is-playing .play-button { color: white; border-color: var(--red); background: var(--red); }
+.is-playing .play-button { color: #0d0d0d; border-color: white; background: white; box-shadow: 0 0 22px rgba(255, 255, 255, 0.18); }
 
 .spectrum {
   display: block;
@@ -265,7 +260,7 @@ main { flex: 1; display: grid; }
   width: 100%;
   height: 3px;
   margin: 0;
-  accent-color: var(--red);
+  accent-color: var(--accent);
   cursor: pointer;
 }
 
@@ -350,7 +345,6 @@ footer {
 @media (max-height: 760px) and (max-width: 699px) {
   .shell { padding-top: 20px; }
   .logo { width: min(61vw, 260px); }
-  .red-mark { margin-top: 9px; }
   .mode-nav { margin-top: 18px; }
   .view { padding-top: 24px; }
   .section-head { margin-bottom: 16px; }
