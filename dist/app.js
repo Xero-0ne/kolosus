@@ -5,7 +5,7 @@ const views = [...document.querySelectorAll('.view')];
 const cards = [...document.querySelectorAll('.track-card')];
 const audioStatus = document.getElementById('audio-status');
 
-const statueFiles = Array.from({ length: 18 }, (_, index) => `./assets/statue-${String(index + 1).padStart(2, '0')}.webp`);
+const statueFiles = Array.from({ length: 37 }, (_, index) => `./assets/statue-${String(index + 1).padStart(2, '0')}.webp`);
 statueFiles.forEach((source, index) => {
   const layer = document.createElement('div');
   layer.className = `backdrop statue-backdrop${index === 0 ? ' is-visible' : ''}`;
@@ -250,7 +250,7 @@ function updateBackdropMotion(now, bass, kick) {
   backdrops.style.setProperty('--motion-x', `${idleX + shakeX}px`);
   backdrops.style.setProperty('--motion-y', `${idleY + shakeY}px`);
   backdrops.style.setProperty('--impact-scale', String(1.032 + bass * 0.006 + kick * 0.014));
-  backdrops.style.setProperty('--impact-light', String(0.54 + kick * 0.08));
+  backdrops.style.setProperty('--impact-light', String(0.62 + kick * 0.06));
 }
 
 function animate(now) {
