@@ -245,11 +245,13 @@ function drawSpectrum(card, cardIndex, liveValues) {
 function updateBackdropMotion(now, bass, kick) {
   const idleX = Math.sin(now * 0.00013) * 3;
   const idleY = Math.cos(now * 0.0001) * 2;
+  const panY = Math.sin(now * 0.000055) * 24;
   const shakeX = Math.sin(now * 0.087) * kick * 4.2;
   const shakeY = Math.cos(now * 0.073) * kick * 2.6;
   backdrops.style.setProperty('--motion-x', `${idleX + shakeX}px`);
   backdrops.style.setProperty('--motion-y', `${idleY + shakeY}px`);
-  backdrops.style.setProperty('--impact-scale', String(1.032 + bass * 0.006 + kick * 0.014));
+  backdrops.style.setProperty('--pan-y', `${panY}px`);
+  backdrops.style.setProperty('--impact-scale', String(1.045 + bass * 0.005 + kick * 0.012));
   backdrops.style.setProperty('--impact-light', String(0.62 + kick * 0.06));
 }
 

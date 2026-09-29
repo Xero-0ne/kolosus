@@ -56,9 +56,10 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 
 .statue-backdrop {
   background-color: #080808;
-  background-size: contain;
+  background-size: cover;
+  background-position: center calc(50% + var(--pan-y, 0px));
   background-repeat: no-repeat;
-  transform: translate3d(var(--motion-x, 0), var(--motion-y, 0), 0) scale(var(--impact-scale, 1.032));
+  transform: translate3d(var(--motion-x, 0), var(--motion-y, 0), 0) scale(var(--impact-scale, 1.045));
   filter: grayscale(1) contrast(1.42) brightness(var(--impact-light, 0.62));
 }
 
