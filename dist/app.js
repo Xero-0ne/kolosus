@@ -243,6 +243,32 @@ cards.forEach((card) => {
     }
     kickDetector.reset();
   });
+
+  async function prepareAudio() {
+    try {
+      const response = await fetch(audio.dataset.src);
+      if (!response.ok) throw new Error(`Audio request failed: ${response.status}`);
+      const blob = await response.blob();
+      const ready = new Promise((resolve, reject) => {
+        audio.addEventListener('loadedmetadata', resolve, { once: true });
+        audio.addEventListener('error', reject, { once: true });
+      });
+      audio.src = URL.createObjectURL(blob);
+      audio.load();
+      await ready;
+      button.disabled = false;
+      seek.disabled = false;
+      card.removeAttribute('aria-busy');
+    } catch (error) {
+      card.removeAttribute('aria-busy');
+      audioStatus.textContent = 'Track unavailable. Please try again later.';
+      audioStatus.hidden = false;
+      console.error('Audio preparation failed', error);
+    }
+  }
+
+  card.setAttribute('aria-busy', 'true');
+  prepareAudio();
 });
 
 const idleProfiles = cards.map((_, cardIndex) => Array.from({ length: 72 }, (_, index) => {
@@ -283,7 +309,8 @@ function drawSpectrum(card, cardIndex, liveValues) {
 function updateBackdropMotion(now, bass, kick) {
   const idleX = Math.sin(now * 0.00013) * 3;
   const idleY = Math.cos(now * 0.0001) * 2;
-  const panY = Math.sin(now * 0.000055) * 24;
+  // Let the tall artwork travel farther during playback while keeping the drift gentle.
+  const panY = Math.sin(now * 0.00012) * 42;
   const shakeX = Math.sin(now * 0.087) * kick * 4.2;
   const shakeY = Math.cos(now * 0.073) * kick * 2.6;
   backdrops.style.setProperty('--motion-x', `${idleX + shakeX}px`);
