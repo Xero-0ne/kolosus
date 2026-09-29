@@ -249,7 +249,7 @@ function updateBackdropMotion(now, bass, kick) {
   const shakeY = Math.cos(now * 0.073) * kick * 2.6;
   backdrops.style.setProperty('--motion-x', `${idleX + shakeX}px`);
   backdrops.style.setProperty('--motion-y', `${idleY + shakeY}px`);
-  backdrops.style.setProperty('--impact-scale', String(1.035 + bass * 0.01 + kick * 0.028));
+  backdrops.style.setProperty('--impact-scale', String(1.012 + bass * 0.006 + kick * 0.014));
   backdrops.style.setProperty('--impact-light', String(0.54 + kick * 0.08));
 }
 
