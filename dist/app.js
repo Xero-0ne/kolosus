@@ -136,7 +136,6 @@ cards.forEach((card) => {
   const seek = card.querySelector('.seek');
   const current = card.querySelector('.current-time');
   const duration = card.querySelector('.duration');
-  const meta = card.querySelector('.track-copy p');
 
   card.addEventListener('click', (event) => {
     if (!event.target.closest('button, input')) selectCard(card);
@@ -146,13 +145,12 @@ cards.forEach((card) => {
     button.disabled = false;
     seek.disabled = false;
     duration.textContent = formatTime(audio.duration);
-    meta.textContent = `PRIVATE MASTER · ${formatTime(audio.duration)}`;
   });
 
   audio.addEventListener('error', () => {
     button.disabled = true;
     seek.disabled = true;
-    meta.textContent = 'MASTER UNAVAILABLE';
+    duration.textContent = '--:--';
   });
 
   audio.addEventListener('timeupdate', () => {
