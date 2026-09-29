@@ -188,6 +188,12 @@ cards.forEach((card) => {
     seek.value = 0;
     current.textContent = '0:00';
     kickDetector.reset();
+    if (activeAudio === audio) {
+      activeAudio = null;
+      activeAnalyser = null;
+      frequencyDb = null;
+      frequencyBytes = null;
+    }
   });
 
   button.addEventListener('click', async (event) => {
@@ -307,6 +313,8 @@ function drawSpectrum(card, cardIndex, liveValues) {
 }
 
 function updateBackdropMotion(now, bass, kick) {
+  bass = Number.isFinite(bass) ? clamp(bass) : 0;
+  kick = Number.isFinite(kick) ? clamp(kick) : 0;
   const idleX = Math.sin(now * 0.00013) * 3;
   const idleY = Math.cos(now * 0.0001) * 2;
   // Let the tall artwork travel farther during playback while keeping the drift gentle.
@@ -331,12 +339,13 @@ function animate(now) {
     activeAnalyser.getByteFrequencyData(frequencyBytes);
     const kickAmplitude = bandAmplitude(frequencyDb, audioContext.sampleRate, activeAnalyser.fftSize, 40, 110);
     const bassAmplitude = clamp(bandAmplitude(frequencyDb, audioContext.sampleRate, activeAnalyser.fftSize, 25, 180) * 5);
-    kick = kickDetector.update(kickAmplitude, deltaTime, now / 1000, 1.25);
+    kick = kickDetector.update(Number.isFinite(kickAmplitude) ? kickAmplitude : 0, deltaTime, now / 1000, 1.25);
     bassEnvelope += (bassAmplitude - bassEnvelope) * (1 - Math.exp(-deltaTime / (bassAmplitude > bassEnvelope ? 0.04 : 0.18)));
     liveValues = Array.from({ length: 72 }, (_, index) => {
       const normalized = index / 71;
       const sourceIndex = Math.min(frequencyBytes.length - 1, Math.floor((normalized ** 1.75) * frequencyBytes.length * 0.72));
-      return clamp((frequencyBytes[sourceIndex] / 255) ** 0.78 * 1.18);
+      const value = (frequencyBytes[sourceIndex] / 255) ** 0.78 * 1.18;
+      return Number.isFinite(value) ? clamp(value) : 0;
     });
   } else {
     bassEnvelope *= Math.exp(-deltaTime / 0.22);
