@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#080808">
+  <meta name="description" content="KOLØSUS private streaming presskit.">
+  <title>KOLØSUS — Private Presskit</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23080808'/%3E%3Cpath d='M5 10h8M12 16h9M19 22h8' stroke='%23ef2439' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body data-view="listen" data-backdrop="temple-01">
+  <div class="backdrops" aria-hidden="true">
+    <div class="backdrop is-visible" data-backdrop-id="temple-01" style="--image:url('./assets/temple-01.jpg')"></div>
+    <div class="backdrop" data-backdrop-id="temple-02" style="--image:url('./assets/temple-02.jpg')"></div>
+    <div class="backdrop" data-backdrop-id="temple-03" style="--image:url('./assets/temple-03.jpg')"></div>
+    <div class="backdrop" data-backdrop-id="ocean" style="--image:url('./assets/ocean.jpg')"></div>
+    <div class="backdrop" data-backdrop-id="ritual" style="--image:url('./assets/ritual.jpg')"></div>
+  </div>
+  <div class="veil" aria-hidden="true"></div>
+
+  <div class="shell">
+    <header class="masthead">
+      <img class="logo" src="./assets/kolsus-logo.png" alt="KOLØSUS">
+      <div class="red-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+      <nav class="mode-nav" aria-label="Presskit sections">
+        <button class="mode-button is-active" data-view-target="listen" aria-pressed="true">LISTEN</button>
+        <button class="mode-button" data-view-target="stream" aria-pressed="false">STREAM</button>
+        <button class="mode-button" data-view-target="contact" aria-pressed="false">CONTACT</button>
+      </nav>
+    </header>
+
+    <main>
+      <section class="view is-active" data-view-id="listen" aria-labelledby="listen-title">
+        <div class="section-head">
+          <p>PRIVATE STREAMING PRESSKIT</p>
+          <h1 id="listen-title">UNRELEASED / 03</h1>
+        </div>
+
+        <div class="track-list">
+          <article class="track-card is-selected" data-track="0" data-backdrop-target="temple-01">
+            <div class="track-line">
+              <span class="track-index">01</span>
+              <div class="track-copy">
+                <h2>UNRELEASED I</h2>
+                <p>PRIVATE MASTER</p>
+              </div>
+              <button class="play-button" type="button" aria-label="Play unreleased track one" disabled><span>▶</span></button>
+            </div>
+            <canvas class="spectrum" width="900" height="92" aria-hidden="true"></canvas>
+            <div class="timeline">
+              <span class="current-time">0:00</span>
+              <input class="seek" type="range" min="0" max="100" step="0.01" value="0" aria-label="Track one playback position" disabled>
+              <span class="duration">—:—</span>
+            </div>
+            <audio preload="metadata" src="./audio/track-01.mp3"></audio>
+          </article>
+
+          <article class="track-card" data-track="1" data-backdrop-target="temple-02">
+            <div class="track-line">
+              <span class="track-index">02</span>
+              <div class="track-copy">
+                <h2>UNRELEASED II</h2>
+                <p>PRIVATE MASTER</p>
+              </div>
+              <button class="play-button" type="button" aria-label="Play unreleased track two" disabled><span>▶</span></button>
+            </div>
+            <canvas class="spectrum" width="900" height="92" aria-hidden="true"></canvas>
+            <div class="timeline">
+              <span class="current-time">0:00</span>
+              <input class="seek" type="range" min="0" max="100" step="0.01" value="0" aria-label="Track two playback position" disabled>
+              <span class="duration">—:—</span>
+            </div>
+            <audio preload="metadata" src="./audio/track-02.mp3"></audio>
+          </article>
+
+          <article class="track-card" data-track="2" data-backdrop-target="temple-03">
+            <div class="track-line">
+              <span class="track-index">03</span>
+              <div class="track-copy">
+                <h2>UNRELEASED III</h2>
+                <p>PRIVATE MASTER</p>
+              </div>
+              <button class="play-button" type="button" aria-label="Play unreleased track three" disabled><span>▶</span></button>
+            </div>
+            <canvas class="spectrum" width="900" height="92" aria-hidden="true"></canvas>
+            <div class="timeline">
+              <span class="current-time">0:00</span>
+              <input class="seek" type="range" min="0" max="100" step="0.01" value="0" aria-label="Track three playback position" disabled>
+              <span class="duration">—:—</span>
+            </div>
+            <audio preload="metadata" src="./audio/track-03.mp3"></audio>
+          </article>
+        </div>
+        <p class="listen-note" id="audio-status" role="status">Three private masters. One-tap playback.</p>
+      </section>
+
+      <section class="view utility-view" data-view-id="stream" aria-labelledby="stream-title" hidden>
+        <div class="section-head">
+          <p>OFFICIAL CHANNELS</p>
+          <h1 id="stream-title">STREAM</h1>
+        </div>
+        <div class="link-stack">
+          <a class="platform-link" href="https://open.spotify.com/artist/6v0B6jNjydLwdpQCe9Suvm" target="_blank" rel="noopener">
+            <span class="platform-icon" aria-hidden="true">◉</span><span>SPOTIFY</span><small>798 monthly listeners</small>
+          </a>
+          <a class="platform-link" href="https://www.youtube.com/@kolsus4224/videos" target="_blank" rel="noopener">
+            <span class="platform-icon play-mark" aria-hidden="true">▶</span><span>YOUTUBE</span><small>Videos + releases</small>
+          </a>
+        </div>
+      </section>
+
+      <section class="view utility-view" data-view-id="contact" aria-labelledby="contact-title" hidden>
+        <div class="section-head">
+          <p>DIRECT CONTACT</p>
+          <h1 id="contact-title">CONTACT</h1>
+        </div>
+        <div class="link-stack">
+          <a class="platform-link" href="https://www.instagram.com/_kolosus_/" target="_blank" rel="noopener">
+            <span class="platform-icon" aria-hidden="true">◎</span><span>INSTAGRAM</span><small>@_kolosus_</small>
+          </a>
+          <div class="platform-link is-pending" aria-disabled="true">
+            <span class="platform-icon" aria-hidden="true">@</span><span>EMAIL</span><small>Address to be added</small>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>KOLØSUS</span>
+      <span>SOUTH AFRICA / INDEPENDENT</span>
+    </footer>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
