@@ -39,15 +39,15 @@
               <div class="track-copy">
                 <h2>KUSH</h2>
               </div>
-              <button class="play-button" type="button" aria-label="Play KUSH"><span>▶</span></button>
+              <button class="play-button" type="button" aria-label="Play KUSH" disabled><span>▶</span></button>
             </div>
             <canvas class="spectrum" width="900" height="92" aria-hidden="true"></canvas>
             <div class="timeline">
               <span class="current-time">0:00</span>
-              <input class="seek" type="range" min="0" max="100" step="0.01" value="0" aria-label="Track one playback position">
+              <input class="seek" type="range" min="0" max="100" step="0.01" value="0" aria-label="Track one playback position" disabled>
               <span class="duration">—:—</span>
             </div>
-            <audio preload="metadata" src="./audio/track-01.mp3"></audio>
+            <audio preload="none" data-src="./audio/track-01.mp3"></audio>
           </article>
 
           <article class="track-card" data-track="1">
@@ -56,15 +56,15 @@
               <div class="track-copy">
                 <h2>XLVII</h2>
               </div>
-              <button class="play-button" type="button" aria-label="Play XLVII"><span>▶</span></button>
+              <button class="play-button" type="button" aria-label="Play XLVII" disabled><span>▶</span></button>
             </div>
             <canvas class="spectrum" width="900" height="92" aria-hidden="true"></canvas>
             <div class="timeline">
               <span class="current-time">0:00</span>
-              <input class="seek" type="range" min="0" max="100" step="0.01" value="0" aria-label="Track two playback position">
+              <input class="seek" type="range" min="0" max="100" step="0.01" value="0" aria-label="Track two playback position" disabled>
               <span class="duration">—:—</span>
             </div>
-            <audio preload="metadata" src="./audio/track-02.mp3"></audio>
+            <audio preload="none" data-src="./audio/track-02.mp3"></audio>
           </article>
 
           <article class="track-card" data-track="2">
@@ -73,15 +73,15 @@
               <div class="track-copy">
                 <h2>SALT &amp; SILENCE</h2>
               </div>
-              <button class="play-button" type="button" aria-label="Play SALT AND SILENCE"><span>▶</span></button>
+              <button class="play-button" type="button" aria-label="Play SALT AND SILENCE" disabled><span>▶</span></button>
             </div>
             <canvas class="spectrum" width="900" height="92" aria-hidden="true"></canvas>
             <div class="timeline">
               <span class="current-time">0:00</span>
-              <input class="seek" type="range" min="0" max="100" step="0.01" value="0" aria-label="Track three playback position">
+              <input class="seek" type="range" min="0" max="100" step="0.01" value="0" aria-label="Track three playback position" disabled>
               <span class="duration">—:—</span>
             </div>
-            <audio preload="metadata" src="./audio/track-03.mp3"></audio>
+            <audio preload="none" data-src="./audio/track-03.mp3"></audio>
           </article>
         </div>
         <p class="listen-note" id="audio-status" role="status" hidden></p>
@@ -124,6 +124,6 @@
     </footer>
   </div>
 
-  <script src="./app.js?v=10"></script>
+  <script src="./app.js?v=11"></script>
 </body>
 </html>
