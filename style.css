@@ -55,11 +55,32 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 
 .statue-backdrop {
   background-color: #080808;
-  background-size: cover;
-  background-position: center calc(50% + var(--pan-y, 0px));
-  background-repeat: no-repeat;
+  background-image: none;
   transform: scale(1.045);
   filter: grayscale(1) contrast(1.42) brightness(0.62);
+}
+
+.statue-backdrop::before {
+  position: absolute;
+  inset: -7%;
+  z-index: 0;
+  background-image: var(--image);
+  background-position: center;
+  background-size: cover;
+  filter: blur(24px) grayscale(1) contrast(1.2) brightness(0.52);
+  opacity: 0.5;
+  content: "";
+}
+
+.statue-backdrop::after {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background-image: var(--image);
+  background-position: center calc(50% + var(--pan-y, 0px));
+  background-size: auto 100%;
+  background-repeat: no-repeat;
+  content: "";
 }
 
 .static-backdrop { transform: scale(1.025); }
