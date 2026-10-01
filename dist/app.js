@@ -2,85 +2,63 @@ const body = document.body;
 const backdrops = document.querySelector('.backdrops');
 const navButtons = [...document.querySelectorAll('.mode-button')];
 const views = [...document.querySelectorAll('.view')];
-const cards = [...document.querySelectorAll('.track-card')];
+const player = document.querySelector('.music-player');
+const playButton = document.getElementById('play');
+const shuffleButton = document.getElementById('shuffle');
+const repeatButton = document.getElementById('repeat');
+const seek = document.querySelector('.seek');
+const currentTime = document.querySelector('.current-time');
+const duration = document.querySelector('.duration');
 const audioStatus = document.getElementById('audio-status');
+const spectrum = document.querySelector('.spectrum');
+const spectrumContext = spectrum.getContext('2d');
+const tracks = ['KUSH', 'XLVII', 'SALT & SILENCE'].map((title, index) => ({
+  title, audio: document.querySelectorAll('.audio-sources audio')[index], ready: false, failed: false
+}));
 
-const statueFiles = Array.from({ length: 37 }, (_, index) => `./assets/statue-${String(index + 1).padStart(2, '0')}.webp`);
-statueFiles.forEach((source, index) => {
+// Reuse two layers for the crossfade so only the current artwork is animated.
+const statueLayers = Array.from({ length: 2 }, (_, index) => {
   const layer = document.createElement('div');
   layer.className = `backdrop statue-backdrop${index === 0 ? ' is-visible' : ''}`;
-  layer.dataset.backdropId = `statue-${String(index + 1).padStart(2, '0')}`;
-  layer.style.setProperty('--image', `url('${source}')`);
   backdrops.prepend(layer);
+  return layer;
 });
-
-const backdropLayers = [...document.querySelectorAll('.backdrop')];
-const statueLayers = [...document.querySelectorAll('.statue-backdrop')];
+const staticLayers = [...document.querySelectorAll('.static-backdrop')];
 const audioNodes = new WeakMap();
-const smoothSpectra = cards.map(() => new Float32Array(72));
-
-let activeCard = cards[0];
+const smoothSpectrum = new Float32Array(72);
+const idleSpectrum = Array.from({ length: 72 }, (_, index) =>
+  0.1 + Math.abs(Math.sin(index * 0.39) * Math.cos(index * 0.13)) * 0.34
+);
+let trackIndex = 0;
+let statueIndex = 0;
+let visibleStatueLayer = 0;
+let lastSlideAt = performance.now();
+let playRequest = 0;
 let audioContext = null;
 let activeAnalyser = null;
-let activeAudio = null;
-let frequencyDb = null;
 let frequencyBytes = null;
-let statueIndex = 0;
-let lastSlideAt = performance.now();
-let lastFrameAt = performance.now();
-let bassEnvelope = 0;
-
+let shuffle = false;
+let shufflePool = [];
+let history = [];
+let repeatMode = 0; // Off, all, one.
 const clamp = (value, minimum = 0, maximum = 1) => Math.max(minimum, Math.min(maximum, value));
-
-class KickDetector {
-  constructor() { this.reset(); }
-  reset() { this.floor = 0.015; this.previous = 0; this.punch = 0; this.last = -10; }
-  update(amplitude, deltaTime, now, sensitivity = 1) {
-    const level = clamp(amplitude * 6);
-    this.floor += (level - this.floor) * (1 - Math.exp(-deltaTime / (level > this.floor ? 0.5 : 0.11)));
-    const onset = level - this.previous;
-    const hit = level > 0.035 && onset > 0.05 / sensitivity && level > this.floor * (1.9 / Math.sqrt(sensitivity)) && now - this.last > 0.14;
-    if (hit) {
-      this.last = now;
-      this.punch = clamp(0.3 + level * 1.3 * sensitivity);
-    } else {
-      this.punch *= Math.exp(-deltaTime / 0.1);
-    }
-    this.previous = level;
-    return this.punch;
-  }
-}
-
-const kickDetector = new KickDetector();
-
-function bandAmplitude(values, sampleRate, fftSize, low, high) {
-  const hertzPerBin = sampleRate / fftSize;
-  const first = Math.max(1, Math.floor(low / hertzPerBin));
-  const last = Math.min(values.length - 1, Math.ceil(high / hertzPerBin));
-  let power = 0;
-  let weight = 0;
-  for (let index = first; index <= last; index += 1) {
-    const overlap = Math.max(0, Math.min(high, (index + 0.5) * hertzPerBin) - Math.max(low, (index - 0.5) * hertzPerBin)) / hertzPerBin;
-    if (overlap) {
-      power += 10 ** (values[index] / 10) * overlap;
-      weight += overlap;
-    }
-  }
-  return weight ? Math.sqrt(power / weight) : 0;
-}
-
-function setBackdrop(id) {
-  body.dataset.backdrop = id;
-  backdropLayers.forEach((layer) => layer.classList.toggle('is-visible', layer.dataset.backdropId === id));
-}
+const statueSource = (index) => `./assets/statue-${String(index + 1).padStart(2, '0')}.webp`;
+statueLayers[0].style.setProperty('--image', `url('${statueSource(0)}')`);
+const nextStatueImage = new Image();
+nextStatueImage.src = statueSource(1);
 
 function showStatue(index, resetClock = true) {
-  statueIndex = (index + statueLayers.length) % statueLayers.length;
-  setBackdrop(statueLayers[statueIndex].dataset.backdropId);
+  statueIndex = (index + 37) % 37;
   if (resetClock) lastSlideAt = performance.now();
+  const incoming = 1 - visibleStatueLayer;
+  statueLayers[incoming].style.setProperty('--image', `url('${statueSource(statueIndex)}')`);
+  nextStatueImage.src = statueSource((statueIndex + 1) % 37);
+  visibleStatueLayer = incoming;
+  if (body.dataset.view === 'listen') {
+    statueLayers.forEach((layer, layerIndex) => layer.classList.toggle('is-visible', layerIndex === incoming));
+  }
+  body.dataset.backdrop = `statue-${String(statueIndex + 1).padStart(2, '0')}`;
 }
-
-function nextStatue() { showStatue(statueIndex + 1); }
 
 function setView(id) {
   body.dataset.view = id;
@@ -94,269 +72,240 @@ function setView(id) {
     view.classList.toggle('is-active', selected);
     view.hidden = !selected;
   });
-  if (id === 'listen') showStatue(statueIndex, false);
-  if (id === 'stream') setBackdrop('monolith');
-  if (id === 'contact') setBackdrop('ritual');
+  statueLayers.forEach((layer, index) => layer.classList.toggle('is-visible', id === 'listen' && index === visibleStatueLayer));
+  staticLayers.forEach((layer) => layer.classList.toggle('is-visible',
+    (id === 'stream' && layer.dataset.backdropId === 'monolith') ||
+    (id === 'contact' && layer.dataset.backdropId === 'ritual')));
+  body.dataset.backdrop = id === 'listen' ? `statue-${String(statueIndex + 1).padStart(2, '0')}` : id === 'stream' ? 'monolith' : 'ritual';
 }
-
 navButtons.forEach((button) => button.addEventListener('click', () => setView(button.dataset.viewTarget)));
 
 function formatTime(value) {
-  if (!Number.isFinite(value)) return '—:—';
-  const minutes = Math.floor(value / 60);
-  const seconds = Math.floor(value % 60).toString().padStart(2, '0');
-  return `${minutes}:${seconds}`;
+  if (!Number.isFinite(value)) return '--:--';
+  return `${Math.floor(value / 60)}:${Math.floor(value % 60).toString().padStart(2, '0')}`;
 }
-
-function selectCard(card) {
-  activeCard = card;
-  cards.forEach((item) => item.classList.toggle('is-selected', item === card));
+function showStatus(message) {
+  audioStatus.textContent = message;
+  audioStatus.hidden = !message;
 }
-
+function updateProgress() {
+  const audio = tracks[trackIndex].audio;
+  const hasDuration = Number.isFinite(audio.duration) && audio.duration > 0;
+  currentTime.textContent = formatTime(audio.currentTime);
+  duration.textContent = hasDuration ? formatTime(audio.duration) : '--:--';
+  if (!seek.matches(':active')) seek.value = hasDuration ? String(Math.round(audio.currentTime / audio.duration * 1000)) : '0';
+  seek.style.setProperty('--progress', `${Number(seek.value) / 10}%`);
+  seek.disabled = !hasDuration;
+}
+function updatePlayer() {
+  const track = tracks[trackIndex];
+  const playing = !track.audio.paused && !track.audio.ended;
+  document.getElementById('track-index').textContent = `${String(trackIndex + 1).padStart(2, '0')} / 03`;
+  document.getElementById('track-title').textContent = track.title;
+  player.classList.toggle('is-playing', playing);
+  playButton.setAttribute('aria-label', `${playing ? 'Pause' : 'Play'} ${track.title}`);
+  playButton.title = playing ? 'Pause' : 'Play';
+  player.setAttribute('aria-busy', String(!track.ready && !track.failed));
+  updateProgress();
+}
 function ensureAudioGraph(audio) {
   const AudioContext = window.AudioContext || window.webkitAudioContext;
   if (!AudioContext) return null;
   if (!audioContext) audioContext = new AudioContext();
-  if (audioNodes.has(audio)) return audioNodes.get(audio).analyser;
+  if (audioNodes.has(audio)) return audioNodes.get(audio);
   const source = audioContext.createMediaElementSource(audio);
   const analyser = audioContext.createAnalyser();
   analyser.fftSize = 2048;
-  analyser.smoothingTimeConstant = 0.35;
-  analyser.minDecibels = -100;
-  analyser.maxDecibels = -10;
+  analyser.smoothingTimeConstant = 0.45;
   source.connect(analyser);
   analyser.connect(audioContext.destination);
-  audioNodes.set(audio, { source, analyser });
+  audioNodes.set(audio, analyser);
   return analyser;
 }
-
-cards.forEach((card) => {
-  const audio = card.querySelector('audio');
-  const button = card.querySelector('.play-button');
-  const seek = card.querySelector('.seek');
-  const current = card.querySelector('.current-time');
-  const duration = card.querySelector('.duration');
-  const playLabel = button.getAttribute('aria-label');
-  let pendingSeek = null;
-
-  function syncMetadata() {
-    if (!Number.isFinite(audio.duration) || audio.duration <= 0) return;
-    duration.textContent = formatTime(audio.duration);
-    if (pendingSeek !== null) {
-      audio.currentTime = (pendingSeek / 100) * audio.duration;
-      current.textContent = formatTime(audio.currentTime);
-      pendingSeek = null;
-    }
-  }
-
-  card.addEventListener('click', (event) => {
-    if (!event.target.closest('button, input')) selectCard(card);
-  });
-
-  audio.addEventListener('loadedmetadata', syncMetadata);
-  audio.addEventListener('durationchange', syncMetadata);
-  syncMetadata();
-
-  audio.addEventListener('error', () => {
-    button.disabled = true;
-    seek.disabled = true;
-    duration.textContent = '--:--';
-    audioStatus.textContent = 'Track unavailable. Please try again later.';
-    audioStatus.hidden = false;
-  });
-
-  audio.addEventListener('timeupdate', () => {
-    current.textContent = formatTime(audio.currentTime);
-    if (Number.isFinite(audio.duration) && !seek.matches(':active')) seek.value = (audio.currentTime / audio.duration) * 100;
-  });
-
-  audio.addEventListener('play', () => {
-    card.classList.add('is-playing');
-    button.querySelector('span').textContent = 'Ⅱ';
-    button.setAttribute('aria-label', playLabel.replace(/^Play /, 'Pause '));
-  });
-
-  audio.addEventListener('pause', () => {
-    card.classList.remove('is-playing');
-    button.querySelector('span').textContent = '▶';
-    button.setAttribute('aria-label', playLabel);
-  });
-
-  audio.addEventListener('ended', () => {
-    card.classList.remove('is-playing');
-    button.querySelector('span').textContent = '▶';
-    seek.value = 0;
-    current.textContent = '0:00';
-    kickDetector.reset();
-    if (activeAudio === audio) {
-      activeAudio = null;
-      activeAnalyser = null;
-      frequencyDb = null;
-      frequencyBytes = null;
-    }
-  });
-
-  button.addEventListener('click', async (event) => {
-    event.stopPropagation();
-    selectCard(card);
-    cards.forEach((other) => {
-      if (other === card) return;
-      const otherAudio = other.querySelector('audio');
-      otherAudio.pause();
-      other.classList.remove('is-playing');
-      other.querySelector('.play-button span').textContent = '▶';
+function prepareTrack(track) {
+  if (track.preparePromise) return track.preparePromise;
+  track.preparePromise = (async () => {
+    const response = await fetch(track.audio.dataset.src);
+    if (!response.ok) throw new Error(`Audio request failed: ${response.status}`);
+    const blob = await response.blob();
+    await new Promise((resolve, reject) => {
+      track.audio.addEventListener('loadedmetadata', resolve, { once: true });
+      track.audio.addEventListener('error', reject, { once: true });
+      track.audio.src = URL.createObjectURL(blob);
+      track.audio.load();
     });
-
-    if (!audio.paused) {
-      audio.pause();
+    track.ready = true;
+    if (tracks[trackIndex] === track) updatePlayer();
+  })().catch((error) => {
+    track.failed = true;
+    if (tracks[trackIndex] === track) {
+      updatePlayer();
+      showStatus('Track unavailable. Please try again later.');
+    }
+    console.error('Audio preparation failed', error);
+    throw error;
+  });
+  return track.preparePromise;
+}
+async function playSelected() {
+  const request = ++playRequest;
+  const track = tracks[trackIndex];
+  showStatus('');
+  try {
+    await prepareTrack(track);
+    if (request !== playRequest || tracks[trackIndex] !== track) return;
+    try {
+      activeAnalyser = ensureAudioGraph(track.audio);
+      frequencyBytes = activeAnalyser ? new Uint8Array(activeAnalyser.frequencyBinCount) : null;
+    } catch (error) {
+      activeAnalyser = null;
+      frequencyBytes = null;
+      console.warn('Spectrum unavailable', error);
+    }
+    if (request !== playRequest) return;
+    const playback = track.audio.play();
+    if (audioContext?.state === 'suspended') audioContext.resume().catch(() => {});
+    await playback;
+    if (request !== playRequest) {
+      track.audio.pause();
       return;
     }
-
-    try {
-      let analyser = null;
-      try {
-        analyser = ensureAudioGraph(audio);
-      } catch {
-        analyser = null;
-      }
-
-      const playPromise = audio.play();
-      if (audioContext?.state === 'suspended') audioContext.resume().catch(() => {});
-      await playPromise;
-
-      activeAnalyser = analyser;
-      activeAudio = audio;
-      frequencyDb = analyser ? new Float32Array(analyser.frequencyBinCount) : null;
-      frequencyBytes = analyser ? new Uint8Array(analyser.frequencyBinCount) : null;
-      kickDetector.reset();
-      nextStatue();
-      audioStatus.hidden = true;
-    } catch (error) {
-      audioStatus.textContent = 'Playback could not start.';
-      audioStatus.hidden = false;
-      console.error('Audio playback failed', error);
-    }
-  });
-
-  seek.addEventListener('input', () => {
-    const position = Number(seek.value);
-    if (Number.isFinite(audio.duration) && audio.duration > 0) {
-      audio.currentTime = (position / 100) * audio.duration;
-      current.textContent = formatTime(audio.currentTime);
-    } else {
-      pendingSeek = position;
-      if (audio.networkState === HTMLMediaElement.NETWORK_EMPTY) audio.load();
-    }
-    kickDetector.reset();
-  });
-
-  async function prepareAudio() {
-    try {
-      const response = await fetch(audio.dataset.src);
-      if (!response.ok) throw new Error(`Audio request failed: ${response.status}`);
-      const blob = await response.blob();
-      const ready = new Promise((resolve, reject) => {
-        audio.addEventListener('loadedmetadata', resolve, { once: true });
-        audio.addEventListener('error', reject, { once: true });
-      });
-      audio.src = URL.createObjectURL(blob);
-      audio.load();
-      await ready;
-      button.disabled = false;
-      seek.disabled = false;
-      card.removeAttribute('aria-busy');
-    } catch (error) {
-      card.removeAttribute('aria-busy');
-      audioStatus.textContent = 'Track unavailable. Please try again later.';
-      audioStatus.hidden = false;
-      console.error('Audio preparation failed', error);
-    }
+    updatePlayer();
+  } catch (error) {
+    if (request === playRequest) showStatus('Playback could not start. Tap play to try again.');
+    console.error('Audio playback failed', error);
   }
-
-  card.setAttribute('aria-busy', 'true');
-  prepareAudio();
+}
+function selectTrack(index, autoplay = true) {
+  ++playRequest;
+  tracks.forEach((track) => track.audio.pause());
+  trackIndex = index;
+  tracks[trackIndex].audio.currentTime = 0;
+  activeAnalyser = null;
+  frequencyBytes = null;
+  showStatus('');
+  updatePlayer();
+  if (autoplay) playSelected();
+}
+function refillShufflePool() {
+  shufflePool = tracks.map((_, index) => index).filter((index) => index !== trackIndex);
+  for (let index = shufflePool.length - 1; index > 0; index -= 1) {
+    const swap = Math.floor(Math.random() * (index + 1));
+    [shufflePool[index], shufflePool[swap]] = [shufflePool[swap], shufflePool[index]];
+  }
+}
+function nextTrack(automatic = false) {
+  if (automatic && repeatMode === 2) {
+    tracks[trackIndex].audio.currentTime = 0;
+    playSelected();
+    return;
+  }
+  let next;
+  if (shuffle) {
+    if (!shufflePool.length) {
+      if (automatic && repeatMode === 0) return;
+      refillShufflePool();
+    }
+    next = shufflePool.pop();
+  } else {
+    if (automatic && trackIndex === tracks.length - 1 && repeatMode === 0) return;
+    next = (trackIndex + 1) % tracks.length;
+  }
+  history.push(trackIndex);
+  selectTrack(next);
+}
+function previousTrack() {
+  const audio = tracks[trackIndex].audio;
+  if (audio.currentTime > 3) {
+    audio.currentTime = 0;
+    updateProgress();
+    playSelected();
+    return;
+  }
+  const previous = shuffle && history.length ? history.pop() : (trackIndex + tracks.length - 1) % tracks.length;
+  if (shuffle) shufflePool.push(trackIndex);
+  selectTrack(previous);
+}
+playButton.addEventListener('click', () => {
+  const audio = tracks[trackIndex].audio;
+  if (!audio.paused) {
+    ++playRequest;
+    audio.pause();
+    updatePlayer();
+  } else playSelected();
 });
-
-const idleProfiles = cards.map((_, cardIndex) => Array.from({ length: 72 }, (_, index) => {
-  const wave = Math.abs(Math.sin(index * 0.39 + cardIndex * 1.7));
-  const pulse = Math.abs(Math.cos(index * 0.13 - cardIndex));
-  return 0.1 + wave * pulse * 0.34;
-}));
-
-function drawSpectrum(card, cardIndex, liveValues) {
-  const canvas = card.querySelector('.spectrum');
-  const context = canvas.getContext('2d');
-  const width = canvas.width;
-  const height = canvas.height;
-  const isActive = card.classList.contains('is-playing') && card.querySelector('audio') === activeAudio && liveValues;
-  const target = isActive ? liveValues : idleProfiles[cardIndex];
-  const smooth = smoothSpectra[cardIndex];
-
-  for (let index = 0; index < smooth.length; index += 1) {
-    const response = target[index] > smooth[index] ? 0.25 : 0.08;
-    smooth[index] += (target[index] - smooth[index]) * response;
+document.getElementById('next').addEventListener('click', () => nextTrack());
+document.getElementById('previous').addEventListener('click', previousTrack);
+shuffleButton.addEventListener('click', () => {
+  shuffle = !shuffle;
+  shuffleButton.classList.toggle('is-active', shuffle);
+  shuffleButton.setAttribute('aria-pressed', String(shuffle));
+  shuffleButton.setAttribute('aria-label', `Shuffle ${shuffle ? 'on' : 'off'}`);
+  shuffleButton.title = `Shuffle ${shuffle ? 'on' : 'off'}`;
+  history = [];
+  shufflePool = [];
+  if (shuffle) refillShufflePool();
+});
+repeatButton.addEventListener('click', () => {
+  repeatMode = (repeatMode + 1) % 3;
+  const label = ['Repeat off', 'Repeat all', 'Repeat one'][repeatMode];
+  repeatButton.dataset.mode = String(repeatMode);
+  repeatButton.setAttribute('aria-label', label);
+  repeatButton.title = label;
+});
+seek.addEventListener('input', () => {
+  const audio = tracks[trackIndex].audio;
+  if (Number.isFinite(audio.duration) && audio.duration > 0) {
+    audio.currentTime = Number(seek.value) / 1000 * audio.duration;
+    currentTime.textContent = formatTime(audio.currentTime);
+    seek.style.setProperty('--progress', `${Number(seek.value) / 10}%`);
   }
-
-  context.clearRect(0, 0, width, height);
-  context.save();
-  context.fillStyle = isActive ? 'rgba(255, 255, 255, 0.94)' : 'rgba(255, 255, 255, 0.38)';
-  context.shadowColor = 'rgba(255, 255, 255, 0.92)';
-  context.shadowBlur = isActive ? 13 : 0;
-  const gap = 5;
-  const barWidth = (width - gap * 71) / 72;
-  smooth.forEach((value, index) => {
-    const floor = isActive ? 7 : 4;
-    const barHeight = Math.max(floor, value * height * (isActive ? 0.98 : 0.5));
-    context.fillRect(index * (barWidth + gap), (height - barHeight) / 2, barWidth, barHeight);
+});
+tracks.forEach((track) => {
+  track.audio.addEventListener('timeupdate', () => { if (tracks[trackIndex] === track) updateProgress(); });
+  track.audio.addEventListener('durationchange', () => { if (tracks[trackIndex] === track) updateProgress(); });
+  track.audio.addEventListener('play', () => { if (tracks[trackIndex] === track) updatePlayer(); });
+  track.audio.addEventListener('pause', () => { if (tracks[trackIndex] === track) updatePlayer(); });
+  track.audio.addEventListener('ended', () => {
+    if (tracks[trackIndex] !== track) return;
+    updatePlayer();
+    nextTrack(true);
   });
-  context.restore();
-}
-
-function updateBackdropMotion(now, bass, kick) {
-  bass = Number.isFinite(bass) ? clamp(bass) : 0;
-  kick = Number.isFinite(kick) ? clamp(kick) : 0;
-  const idleX = Math.sin(now * 0.00013) * 3;
-  const idleY = Math.cos(now * 0.0001) * 2;
-  // Let the tall artwork travel farther during playback while keeping the drift gentle.
-  const panY = Math.sin(now * 0.00012) * 42;
-  const shakeX = Math.sin(now * 0.087) * kick * 4.2;
-  const shakeY = Math.cos(now * 0.073) * kick * 2.6;
-  backdrops.style.setProperty('--motion-x', `${idleX + shakeX}px`);
-  backdrops.style.setProperty('--motion-y', `${idleY + shakeY}px`);
-  backdrops.style.setProperty('--pan-y', `${panY}px`);
-  backdrops.style.setProperty('--impact-scale', String(1.045 + bass * 0.005 + kick * 0.012));
-  backdrops.style.setProperty('--impact-light', String(0.62 + kick * 0.06));
-}
-
-function animate(now) {
-  const deltaTime = Math.min(0.1, (now - lastFrameAt) / 1000 || 1 / 60);
-  lastFrameAt = now;
-  let kick = 0;
+  // Full-file blobs keep seeking reliable on both the Site host and GitHub Pages.
+  prepareTrack(track).catch(() => {});
+});
+function drawSpectrum() {
+  const audio = tracks[trackIndex].audio;
   let liveValues = null;
-
-  if (activeAnalyser && activeAudio && !activeAudio.paused && frequencyDb && frequencyBytes) {
-    activeAnalyser.getFloatFrequencyData(frequencyDb);
+  if (activeAnalyser && frequencyBytes && !audio.paused) {
     activeAnalyser.getByteFrequencyData(frequencyBytes);
-    const kickAmplitude = bandAmplitude(frequencyDb, audioContext.sampleRate, activeAnalyser.fftSize, 40, 110);
-    const bassAmplitude = clamp(bandAmplitude(frequencyDb, audioContext.sampleRate, activeAnalyser.fftSize, 25, 180) * 5);
-    kick = kickDetector.update(Number.isFinite(kickAmplitude) ? kickAmplitude : 0, deltaTime, now / 1000, 1.25);
-    bassEnvelope += (bassAmplitude - bassEnvelope) * (1 - Math.exp(-deltaTime / (bassAmplitude > bassEnvelope ? 0.04 : 0.18)));
     liveValues = Array.from({ length: 72 }, (_, index) => {
       const normalized = index / 71;
-      const sourceIndex = Math.min(frequencyBytes.length - 1, Math.floor((normalized ** 1.75) * frequencyBytes.length * 0.72));
-      const value = (frequencyBytes[sourceIndex] / 255) ** 0.78 * 1.18;
-      return Number.isFinite(value) ? clamp(value) : 0;
+      const sourceIndex = Math.min(frequencyBytes.length - 1, Math.floor(normalized ** 1.75 * frequencyBytes.length * 0.72));
+      return clamp((frequencyBytes[sourceIndex] / 255) ** 0.78 * 1.18);
     });
-  } else {
-    bassEnvelope *= Math.exp(-deltaTime / 0.22);
-    kickDetector.reset();
   }
-
-  if (body.dataset.view === 'listen' && now - lastSlideAt > 7200) nextStatue();
-  updateBackdropMotion(now, bassEnvelope, kick);
-  cards.forEach((card, index) => drawSpectrum(card, index, liveValues));
+  const target = liveValues || idleSpectrum;
+  for (let index = 0; index < smoothSpectrum.length; index += 1) {
+    smoothSpectrum[index] += (target[index] - smoothSpectrum[index]) * (target[index] > smoothSpectrum[index] ? 0.25 : 0.08);
+  }
+  const width = spectrum.width;
+  const height = spectrum.height;
+  spectrumContext.clearRect(0, 0, width, height);
+  spectrumContext.fillStyle = liveValues ? 'rgba(255,255,255,.92)' : 'rgba(255,255,255,.42)';
+  const gap = 5;
+  const barWidth = (width - gap * 71) / 72;
+  smoothSpectrum.forEach((value, index) => {
+    const barHeight = Math.max(liveValues ? 7 : 4, value * height * (liveValues ? 0.98 : 0.5));
+    spectrumContext.fillRect(index * (barWidth + gap), (height - barHeight) / 2, barWidth, barHeight);
+  });
+}
+function animate(now) {
+  if (body.dataset.view === 'listen' && now - lastSlideAt > 7200) showStatue(statueIndex + 1);
+  // Only the slow vertical pan remains; audio never moves or scales the backdrop.
+  backdrops.style.setProperty('--pan-y', `${Math.sin(now * 0.00012) * 42}px`);
+  drawSpectrum();
   requestAnimationFrame(animate);
 }
-
-showStatue(0);
+updatePlayer();
 requestAnimationFrame(animate);
