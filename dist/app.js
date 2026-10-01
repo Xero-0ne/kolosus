@@ -12,7 +12,7 @@ const duration = document.querySelector('.duration');
 const audioStatus = document.getElementById('audio-status');
 const spectrum = document.querySelector('.spectrum');
 const spectrumContext = spectrum.getContext('2d');
-const tracks = ['KUSH', 'XLVII', 'SALT & SILENCE'].map((title, index) => ({
+const tracks = ['KUSH', 'XLVII', 'SALT & SILENCE', 'DISAPPEAR'].map((title, index) => ({
   title, audio: document.querySelectorAll('.audio-sources audio')[index], ready: false, failed: false
 }));
 
@@ -100,7 +100,7 @@ function updateProgress() {
 function updatePlayer() {
   const track = tracks[trackIndex];
   const playing = !track.audio.paused && !track.audio.ended;
-  document.getElementById('track-index').textContent = `${String(trackIndex + 1).padStart(2, '0')} / 03`;
+  document.getElementById('track-index').textContent = `${String(trackIndex + 1).padStart(2, '0')} / ${String(tracks.length).padStart(2, '0')}`;
   document.getElementById('track-title').textContent = track.title;
   player.classList.toggle('is-playing', playing);
   playButton.setAttribute('aria-label', `${playing ? 'Pause' : 'Play'} ${track.title}`);
